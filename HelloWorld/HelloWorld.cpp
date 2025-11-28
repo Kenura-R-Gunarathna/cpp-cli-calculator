@@ -5,44 +5,156 @@
 #include <vector>
 #include <cctype>
 #include <cmath>
-#include <algorithm>
+#include <stdexcept>
 
-// Function to determine the priority of operators
-// Higher number means higher priority
-int static getPrecedence(char op) {
-    if (op == '+' || op == '-') return 1;
-    if (op == '*' || op == '/' || op == '%') return 2;
-    if (op == '^') return 3;
-    return 0;
-}
+// ==========================================
+// THE CALCULATOR CLASS
+// ==========================================
+class Calculator {
+private:
+    std::string expression; // The math string (e.g., "2+2")
+    size_t pos;             // Current index we are reading at
 
-// Function to perform the math operation
-double static applyOp(double a, double b, char op) {
-    switch (op) {
-    case '+': return a + b;
-    case '-': return a - b;
-    case '*': return a * b;
-    case '/': return b == 0 ? 0 : a / b;
-    case '^': return std::pow(a, b);
-    case '%': return std::fmod(a, b);
+    // Helper: Look at the current character without moving
+    char peek() {
+        if (pos >= expression.length()) return 0; // Null char if end
+        return expression[pos];
     }
-    return 0;
-}
 
-// Check if char is an operator or parenthesis
-bool static isOperator(char c)
-{
-    // Corrected the logic to use OR (||) instead of commas
-    return (c == '+' || c == '-' || c == '*' || c == '/' || c == '^' || c == '%' || c == '(' || c == ')');
-}
+    // Helper: Get current character and move to next
+    char get() {
+        if (pos >= expression.length()) return 0;
+        return expression[pos++];
+    }
 
+    // Helper: Skip spaces
+    void skipWhitespace() {
+        while (pos < expression.length() && std::isspace(expression[pos])) {
+            pos++;
+        }
+    }
+
+    // ==========================================
+    // RECURSIVE PARSING LOGIC
+    // Hierarchy: Expression -> Term -> Power -> Factor
+    // ==========================================
+
+    // Level 4: Factor (Numbers and Parentheses)
+    // This is where the recursion magic happens!
+    double parseFactor() {
+        skipWhitespace();
+        char c = peek();
+
+        // 1. Handle Parentheses (Recursion)
+        if (c == '(') {
+            get(); // Eat '('
+
+            // CALL ITSELF: Calculate what is inside the brackets
+            double result = parseExpression();
+
+            skipWhitespace();
+            if (peek() == ')') {
+                get(); // Eat ')'
+            }
+            else {
+                std::cout << "Warning: Missing closing bracket ')'\n";
+            }
+            return result;
+        }
+
+        // 2. Handle Negative numbers (Unary minus)
+        if (c == '-') {
+            get();
+            return -parseFactor();
+        }
+
+        // 3. Handle actual numbers
+        if (std::isdigit(c) || c == '.') {
+            std::string numStr;
+            while (pos < expression.length() && (std::isdigit(peek()) || peek() == '.')) {
+                numStr += get();
+            }
+            return std::stod(numStr);
+        }
+
+        return 0; // Default error value
+    }
+
+    // Level 3: Powers (^)
+    double parsePower() {
+        double left = parseFactor();
+        skipWhitespace();
+
+        if (peek() == '^') {
+            get(); // Eat '^'
+            double right = parsePower(); // Recursion allows 2^3^4
+            return std::pow(left, right);
+        }
+        return left;
+    }
+
+    // Level 2: Terms (*, /, %)
+    double parseTerm() {
+        double left = parsePower();
+        skipWhitespace();
+
+        while (peek() == '*' || peek() == '/' || peek() == '%') {
+            char op = get();
+            double right = parsePower();
+
+            if (op == '*') left = left * right;
+            else if (op == '/') {
+                if (right == 0) throw std::runtime_error("Division by zero");
+                left = left / right;
+            }
+            else if (op == '%') left = std::fmod(left, right);
+        }
+        return left;
+    }
+
+    // Level 1: Expressions (+, -)
+    // This is the entry point logic
+    double parseExpression() {
+        double left = parseTerm();
+        skipWhitespace();
+
+        while (peek() == '+' || peek() == '-') {
+            char op = get();
+            double right = parseTerm();
+
+            if (op == '+') left = left + right;
+            else if (op == '-') left = left - right;
+        }
+        return left;
+    }
+
+public:
+    // Constructor: Sets up the calculator with a new string
+    Calculator(std::string input) {
+        expression = input;
+        pos = 0;
+    }
+
+    // The public function that starts the math
+    double solve() {
+        try {
+            return parseExpression();
+        }
+        catch (const std::exception& e) {
+            std::cout << "Error: " << e.what() << "\n";
+            return 0;
+        }
+    }
+};
+
+// ==========================================
+// MAIN PROGRAM
+// ==========================================
 int main()
 {
     std::cout << "==================================\n";
-    std::cout << "Advanced Calculator (PEMDAS)\n";
-    std::cout << "Supports: + - * / ^ % ( )\n";
+    std::cout << "Class-Based Recursive Calculator\n";
     std::cout << "==================================\n";
-    std::cout << "Type 'exit' to quit\n\n";
 
     std::string input;
 
@@ -51,117 +163,14 @@ int main()
         std::cout << ">> ";
         std::getline(std::cin, input);
 
-        if (input == "exit" || input == "quit") {
-            std::cout << "Goodbye!\n";
-            break;
-        }
+        if (input == "exit" || input == "quit") break;
+        if (input.empty()) continue;
 
-        // We use two vectors to act as Stacks
-        std::vector<double> values;
-        std::vector<char> ops;
+        Calculator calc(input);
 
-        bool errorFound = false;
+        double result = calc.solve();
 
-        for (size_t i = 0; i < input.length(); i++)
-        {
-            if (input[i] == ' ') continue;
-
-            // 1. If it's a number, parse the whole number
-            if (std::isdigit(input[i]) || input[i] == '.') {
-                std::string valStr;
-                while (i < input.length() && (std::isdigit(input[i]) || input[i] == '.')) {
-                    valStr += input[i];
-                    i++;
-                }
-                values.push_back(std::stod(valStr));
-                i--; // Step back because the loop increments i
-            }
-            // 2. If it's an opening bracket, push to ops stack
-            else if (input[i] == '(') {
-                ops.push_back('(');
-            }
-            // 3. If it's a closing bracket, solve entire brace
-            else if (input[i] == ')') {
-                while (!ops.empty() && ops.back() != '(')
-                {
-                    if (values.size() < 2) { errorFound = true; break; }
-
-                    double val2 = values.back(); values.pop_back();
-                    double val1 = values.back(); values.pop_back();
-                    char op = ops.back(); ops.pop_back();
-
-                    if (op == '/' && val2 == 0) {
-                        std::cout << "Error: Division by zero\n";
-                        errorFound = true;
-                        break;
-                    }
-
-                    values.push_back(applyOp(val1, val2, op));
-                }
-                // Pop the opening '('
-                if (!ops.empty()) ops.pop_back();
-            }
-            // 4. If it's an operator
-            else if (isOperator(input[i])) {
-                // While top of 'ops' has same or greater precedence to current operator, apply 'ops' to values
-                while (!ops.empty() && ops.back() != '(' &&
-                    getPrecedence(ops.back()) >= getPrecedence(input[i]))
-                {
-                    if (values.size() < 2) { errorFound = true; break; }
-
-                    double val2 = values.back(); values.pop_back();
-                    double val1 = values.back(); values.pop_back();
-                    char op = ops.back(); ops.pop_back();
-
-                    if (op == '/' && val2 == 0) {
-                        std::cout << "Error: Division by zero\n";
-                        errorFound = true;
-                        break;
-                    }
-
-                    values.push_back(applyOp(val1, val2, op));
-                }
-                ops.push_back(input[i]);
-            }
-            else {
-                std::cout << "Error: Invalid character '" << input[i] << "'\n";
-                errorFound = true;
-            }
-
-            if (errorFound) break;
-        }
-
-        // Apply remaining operators in the stack
-        while (!ops.empty() && !errorFound)
-        {
-            if (values.size() < 2) {
-                // This happens if trailing operators exist (e.g. "2 +")
-                errorFound = true;
-                break;
-            }
-
-            double val2 = values.back(); values.pop_back();
-            double val1 = values.back(); values.pop_back();
-            char op = ops.back(); ops.pop_back();
-
-            if (op == '/' && val2 == 0) {
-                std::cout << "Error: Division by zero\n";
-                errorFound = true;
-                break;
-            }
-
-            values.push_back(applyOp(val1, val2, op));
-        }
-
-        if (!errorFound && !values.empty()) {
-            std::cout << "ans = " << values.back() << "\n\n";
-        }
-        else if (!errorFound && values.empty()) {
-            // Case were input was empty or just spaces
-        }
-        else {
-            std::cout << "Calculation Error.\n\n";
-        }
+        std::cout << "ans = " << result << "\n\n";
     }
 
     return 0;
