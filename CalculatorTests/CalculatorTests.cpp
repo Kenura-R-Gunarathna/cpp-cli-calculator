@@ -6,7 +6,7 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace CalculatorTests
 {
-	TEST_CLASS(CalculatorTests)
+	TEST_CLASS(CalculatorTests) 
 	{
 	public:
 		
@@ -73,12 +73,8 @@ namespace CalculatorTests
 
 		TEST_METHOD(TestDivisionByZero)
 		{
-			// Your code prints "Error" to console and returns 0 in main catch block
 			Calculator calc("10 / 0");
-			double result = calc.solve();
-
-			// Based on your code, solve() returns 0 when it catches an exception
-			AssertDouble(0.0, result);
+			AssertDouble(0.0, calc.solve());
 		}
 	};
 }

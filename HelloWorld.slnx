@@ -5,4 +5,5 @@
   </Configurations>
   <Project Path="CalculatorTests/CalculatorTests.vcxproj" />
   <Project Path="HelloWorld/HelloWorld.vcxproj" Id="f68fd8f2-0b1c-4591-9a64-0d2c116db20d" />
+  <Project Path="HistoryTests/HistoryTests.vcxproj" />
 </Solution>
