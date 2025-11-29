@@ -46,7 +46,7 @@ This project demonstrates advanced parsing logic, class-based architecture, and 
 ### Usage Examples
 
 
-```bash
+```text
 
 >> 2 + 3 * 5
 
